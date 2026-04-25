@@ -1,0 +1,179 @@
+/* frontend/app/globals.css */
+/* Stitch design token implementation */
+
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ */
+/* Design tokens                                                        */
+/* ------------------------------------------------------------------ */
+:root {
+  /* Surface palette */
+  --background:              #0b1326;
+  --surface:                 #0b1326;
+  --surface-dim:             #060e20;
+  --surface-bright:          #31394d;
+  --surface-container-lowest: #060e20;
+  --surface-container-low:   #131b2e;
+  --surface-container:       #171f33;
+  --surface-container-high:  #222a3d;
+  --surface-container-highest: #2d3449;
+
+  /* On-surface */
+  --on-surface:              #dae2fd;
+  --on-surface-variant:      #c2c6d6;
+
+  /* Primary (blue accent) */
+  --primary:                 #adc6ff;
+  --primary-container:       #4d8eff;
+  --on-primary:              #002e6a;
+  --on-primary-container:    #00285d;
+
+  /* Secondary */
+  --secondary:               #c0c1ff;
+  --secondary-container:     #3131c0;
+  --on-secondary:            #1000a9;
+
+  /* Tertiary (amber) */
+  --tertiary:                #ffb786;
+  --tertiary-container:      #df7412;
+
+  /* Error */
+  --error:                   #ffb4ab;
+  --error-container:         #93000a;
+
+  /* Outline */
+  --outline:                 #8c909f;
+  --outline-variant:         #424754;
+
+  /* Inverse */
+  --inverse-surface:         #dae2fd;
+  --inverse-on-surface:      #283044;
+  --inverse-primary:         #005ac2;
+}
+
+/* ------------------------------------------------------------------ */
+/* Base                                                                 */
+/* ------------------------------------------------------------------ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--on-surface);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  line-height: 1.6;
+}
+
+/* ------------------------------------------------------------------ */
+/* Typography                                                           */
+/* ------------------------------------------------------------------ */
+.font-display {
+  font-family: var(--font-manrope), sans-serif;
+}
+
+.font-mono {
+  font-family: var(--font-space-grotesk), monospace;
+}
+
+/* ------------------------------------------------------------------ */
+/* Scrollbar                                                            */
+/* ------------------------------------------------------------------ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.15);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.3);
+}
+
+/* ------------------------------------------------------------------ */
+/* Range input styling                                                  */
+/* ------------------------------------------------------------------ */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #3b82f6;
+  cursor: pointer;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  transition: box-shadow 0.2s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 0 5px rgba(59, 130, 246, 0.3);
+}
+
+/* ------------------------------------------------------------------ */
+/* Animations                                                           */
+/* ------------------------------------------------------------------ */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.4s ease-out both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out both;
+}
+
+/* Stagger children */
+.stagger > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger > *:nth-child(2) { animation-delay: 0.10s; }
+.stagger > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger > *:nth-child(4) { animation-delay: 0.20s; }
+
+/* ------------------------------------------------------------------ */
+/* Background gradients (decorative)                                   */
+/* ------------------------------------------------------------------ */
+.bg-glow-primary {
+  background: radial-gradient(
+    ellipse 60% 40% at 70% 20%,
+    rgba(93, 155, 255, 0.07) 0%,
+    transparent 70%
+  );
+}
+
+.bg-glow-secondary {
+  background: radial-gradient(
+    ellipse 50% 40% at 20% 80%,
+    rgba(59, 130, 246, 0.05) 0%,
+    transparent 70%
+  );
+}
