@@ -69,18 +69,11 @@ class LLMGenerator:
 
         try:
             response = self._model.generate_content(safe_prompt)
-            # --- Diagnostic: print the raw response ---
-            import sys
-            print(f"[VERTEX DEBUG] response type: {type(response)}", flush=True, file=sys.stderr)
-            print(f"[VERTEX DEBUG] response: {response}", flush=True, file=sys.stderr)
             text = (getattr(response, "text", "") or "").strip()
-            print(f"[VERTEX DEBUG] text extracted: {repr(text[:200])}", flush=True, file=sys.stderr)
             if text:
                 return text
             return FALLBACK_MESSAGE
         except Exception as exc:
-            import sys
-            print(f"[VERTEX ERROR] {type(exc).__name__}: {exc}", flush=True, file=sys.stderr)
             err = str(exc).lower()
             if "default credentials" in err or "credential" in err or "auth" in err:
                 return AUTH_MESSAGE

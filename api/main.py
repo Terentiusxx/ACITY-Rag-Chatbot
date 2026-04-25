@@ -16,15 +16,8 @@ Usage:
 
 from __future__ import annotations
 
-import logging
 from contextlib import asynccontextmanager
 from typing import Any, Dict
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
-log = logging.getLogger("api")
 
 from dotenv import load_dotenv
 from fastapi import FastAPI

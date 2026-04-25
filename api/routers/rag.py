@@ -14,14 +14,11 @@ Endpoints:
 from __future__ import annotations
 
 import asyncio
-import logging
 from dataclasses import asdict
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-
-log = logging.getLogger("rag")
 
 from src.embedder import Embedder
 from src.prompt_builder import build_prompt
@@ -35,15 +32,6 @@ router = APIRouter()
 
 # Will be injected by main.py at startup.
 pipeline: Dict[str, Any] = {}
-
-
-# ---------------------------------------------------------------------------
-# Debug schema
-# ---------------------------------------------------------------------------
-class LLMDebugResponse(BaseModel):
-    answer: str
-    model_tried: str
-    init_error: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -164,24 +152,27 @@ async def run_query(req: QueryRequest):
     )
 
     # Generate RAG answer (blocking LLM call — run in thread pool)
-    def _generate_rag():
-        result = generate_answer(provider="vertex", model=req.model, prompt=prompt)
-        log.info("RAG answer: %s", result[:120])
-        return result
-
-    answer = await asyncio.get_event_loop().run_in_executor(None, _generate_rag)
+    answer = await asyncio.get_event_loop().run_in_executor(
+        None,
+        lambda: generate_answer(
+            provider="vertex",
+            model=req.model,
+            prompt=prompt,
+        ),
+    )
 
     # Optional pure LLM baseline
     pure_llm_answer: Optional[str] = None
     if req.show_pure_llm:
         pure_prompt = f"Answer the question as best you can.\n\nQuestion: {req.question}"
-
-        def _generate_baseline():
-            result = generate_answer(provider="vertex", model=req.model, prompt=pure_prompt)
-            log.info("Baseline answer: %s", result[:120])
-            return result
-
-        pure_llm_answer = await asyncio.get_event_loop().run_in_executor(None, _generate_baseline)
+        pure_llm_answer = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: generate_answer(
+                provider="vertex",
+                model=req.model,
+                prompt=pure_prompt,
+            ),
+        )
 
     # Build chunk results for the response
     chunk_results = []
@@ -240,33 +231,3 @@ async def get_logs(n: int = 5):
 
     logger: JsonlLogger = pipeline["logger"]
     return {"logs": logger.tail(n=n)}
-
-
-@router.get("/debug/llm", response_model=LLMDebugResponse)
-async def debug_llm(model: str = "gemini-1.5-pro"):
-    """Test Vertex AI directly and surface the real error.
-    
-    Call: GET /api/debug/llm?model=gemini-1.5-pro
-    """
-    import os
-    from src.generator import LLMGenerator
-    from src.config import PROJECT_ID, LOCATION
-
-    project_id = os.getenv("PROJECT_ID", PROJECT_ID).strip() or PROJECT_ID
-    location = os.getenv("LOCATION", LOCATION).strip() or LOCATION
-
-    def _test():
-        gen = LLMGenerator(project_id=project_id, location=location, model_name=model)
-        init_err = gen._init_error
-        if init_err:
-            log.error("LLMGenerator init error: %s", init_err)
-        try:
-            result = gen.generate("Say hello in one sentence.")
-            log.info("Debug LLM result: %s", result)
-            return result, init_err
-        except Exception as exc:
-            log.error("Debug LLM exception: %s", exc)
-            return str(exc), init_err
-
-    answer, init_error = await asyncio.get_event_loop().run_in_executor(None, _test)
-    return LLMDebugResponse(answer=answer, model_tried=model, init_error=init_error)
