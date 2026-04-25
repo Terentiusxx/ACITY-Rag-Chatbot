@@ -12,7 +12,9 @@ Important (exam constraint):
 
 from __future__ import annotations
 
+import json
 import os
+import tempfile
 from typing import Optional
 
 import vertexai
@@ -26,9 +28,42 @@ FALLBACK_MESSAGE = (
 )
 AUTH_MESSAGE = (
     "Vertex AI authentication is not configured. "
-    "Install Google Cloud CLI, run `gcloud auth application-default login`, "
-    "and ensure PROJECT_ID/LOCATION are correct."
+    "Set GOOGLE_APPLICATION_CREDENTIALS_JSON (service account JSON string) "
+    "or GOOGLE_APPLICATION_CREDENTIALS (path to JSON key file)."
 )
+
+
+def _ensure_google_credentials() -> None:
+    """Configure Google credentials from env vars for cloud deployments.
+
+    Priority:
+    1. GOOGLE_APPLICATION_CREDENTIALS (file path) — already handled by google-auth
+    2. GOOGLE_APPLICATION_CREDENTIALS_JSON (JSON string) — write to a temp file
+       and set GOOGLE_APPLICATION_CREDENTIALS so all google-auth clients pick it up.
+    """
+    # Already set (either by the OS env or a previous call to this function)
+    if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        return
+
+    json_str = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON", "").strip()
+    if not json_str:
+        return  # Let google-auth fall through to ADC (works locally)
+
+    try:
+        creds_dict = json.loads(json_str)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            "GOOGLE_APPLICATION_CREDENTIALS_JSON is not valid JSON."
+        ) from exc
+
+    # Write to a named temp file that persists for the lifetime of the process.
+    tmp = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".json", delete=False, prefix="gcp_sa_"
+    )
+    json.dump(creds_dict, tmp)
+    tmp.flush()
+    tmp.close()
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = tmp.name
 
 
 class LLMGenerator:
@@ -46,6 +81,7 @@ class LLMGenerator:
         try:
             if not self.project_id:
                 raise ValueError("PROJECT_ID is empty.")
+            _ensure_google_credentials()
             vertexai.init(project=self.project_id, location=self.location)
             self._model = GenerativeModel(self.model_name)
         except Exception as exc:

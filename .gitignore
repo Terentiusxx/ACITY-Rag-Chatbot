@@ -11,3 +11,11 @@ __pycache__/
 
 # Local cache (optional)
 .cache/
+
+# Query logs (contain user data — do not commit)
+logs/*.jsonl
+
+# GCP service account temp files (written at runtime by generator.py)
+gcp_sa_*.json
+*-service-account.json
+*-sa-key.json

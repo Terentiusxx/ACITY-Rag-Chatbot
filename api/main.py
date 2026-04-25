@@ -17,6 +17,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import Any, Dict
 
@@ -122,12 +123,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# ---------------------------------------------------------------------------
+# CORS — add your Render frontend URL via ALLOWED_ORIGINS env var.
+# Example: ALLOWED_ORIGINS=https://my-chatbot.onrender.com,https://my-chatbot-2.onrender.com
+# ---------------------------------------------------------------------------
+_default_origins = "http://localhost:3000,http://127.0.0.1:3000"
+_raw_origins = os.getenv("ALLOWED_ORIGINS", _default_origins)
+allow_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
