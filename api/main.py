@@ -79,7 +79,6 @@ def _build_indexes(strategy: str) -> tuple:
     return chunks, vstore, kstore
 
 
-@asynccontextmanager
 async def init_pipeline():
     try:
         load_dotenv()
