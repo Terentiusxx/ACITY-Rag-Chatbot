@@ -39,6 +39,8 @@ from src.embedder import Embedder
 from src.keyword_search import KeywordSearch
 from src.logger import JsonlLogger
 from src.vector_store import VectorStore
+import asyncio
+
 
 from api.routers import rag
 
@@ -78,14 +80,10 @@ def _build_indexes(strategy: str) -> tuple:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Load and cache the full RAG pipeline on server startup."""
-    load_dotenv()
-
-    pipeline["ready"] = False
-    pipeline["error"] = None
-
+async def init_pipeline():
     try:
+        load_dotenv()
+
         config = AppConfig.from_env()
         docs = load_sources(config)
         docs = clean_documents(docs)
@@ -105,9 +103,15 @@ async def lifespan(app: FastAPI):
         pipeline["error"] = str(exc)
         pipeline["ready"] = False
 
-    # Inject pipeline state into the router module so handlers can access it.
-    rag.pipeline = pipeline
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    pipeline["ready"] = False
+    pipeline["error"] = None
+
+    asyncio.create_task(init_pipeline())  # ✅ RUNS IN BACKGROUND
+
+    rag.pipeline = pipeline
     yield
 
     pipeline.clear()
