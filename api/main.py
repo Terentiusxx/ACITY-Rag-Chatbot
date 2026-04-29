@@ -25,6 +25,8 @@ from src.embedder import Embedder
 from src.keyword_search import KeywordSearch
 from src.logger import JsonlLogger
 from src.vector_store import VectorStore
+import asyncio
+
 
 from api.routers import rag
 

@@ -1,0 +1,65 @@
+###############################################################################
+# render.yaml — Render Blueprint for the Academic City RAG Chatbot
+#
+# Deploys two services:
+#   1. acity-rag-api   — FastAPI backend (Web Service, Python)
+#   2. acity-rag-ui    — Next.js frontend (Static Site)
+#
+# After first deploy, set these secret environment variables in the Render
+# dashboard (they are NOT committed to git):
+#   - GOOGLE_APPLICATION_CREDENTIALS_JSON
+###############################################################################
+
+services:
+  # ---------------------------------------------------------------------------
+  # 1. FastAPI backend
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: acity-rag-api
+    runtime: python
+    region: oregon
+    plan: free
+
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+
+    envVars:
+      - key: STUDENT_NAME
+        value: Terence Anquandah
+      - key: INDEX_NUMBER
+        value: "10022200077"
+      - key: LLM_PROVIDER
+        value: vertex
+      - key: PROJECT_ID
+        value: intro-to-ai-494310
+      - key: LOCATION
+        value: us-central1
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: LOG_LEVEL
+        value: INFO
+      # Set ALLOWED_ORIGINS to your frontend's Render URL after first deploy.
+      # e.g.  https://acity-rag-ui.onrender.com
+      - key: ALLOWED_ORIGINS
+        value: https://acity-rag-ui.onrender.com
+      # GOOGLE_APPLICATION_CREDENTIALS_JSON must be set as a secret in the
+      # Render dashboard — do NOT put the real value here.
+      - key: GOOGLE_APPLICATION_CREDENTIALS_JSON
+        sync: false   # tells Render this is a secret to be filled in manually
+
+  # ---------------------------------------------------------------------------
+  # 2. Next.js frontend (Static export)
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: acity-rag-ui
+    runtime: node
+    region: oregon
+    plan: free
+
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    envVars:
+      # Point this at the backend service URL.
+      - key: NEXT_PUBLIC_API_URL
+        value: https://acity-rag-api.onrender.com
