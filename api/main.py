@@ -1,30 +1,17 @@
 """api/main.py
 
-Name: Terence Anquandah
-Index Number: 10022200077
+Terence Anquandah
+Index number: 10022200077
 
-FastAPI entry point for the Academic City RAG Chatbot.
-
-Responsibilities:
-- Boot the RAG pipeline once on startup via lifespan context.
-- Configure CORS so the Next.js dev server can talk to this API.
-- Mount all routers.
-
-Usage:
-    uvicorn api.main:app --reload --port 8000
+Render safe FastAPI entry point for the Academic City RAG Chatbot
+Optimized to avoid startup timeout on Render.
 """
 
 from __future__ import annotations
 
 import logging
-from contextlib import asynccontextmanager
+import threading
 from typing import Any, Dict
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
-log = logging.getLogger("api")
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -41,19 +28,22 @@ from src.vector_store import VectorStore
 
 from api.routers import rag
 
-# ---------------------------------------------------------------------------
-# Shared pipeline state (populated once on startup, used across requests)
-# ---------------------------------------------------------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+
+log = logging.getLogger("api")
+
 pipeline: Dict[str, Any] = {}
 
 
-def _build_indexes(strategy: str) -> tuple:
-    """Build (or return cached) vector + keyword indexes for a chunking strategy."""
+def _build_indexes(strategy: str):
     if strategy in pipeline["indexes"]:
         return pipeline["indexes"][strategy]
 
-    config: AppConfig = pipeline["config"]
-    embedder: Embedder = pipeline["embedder"]
+    config = pipeline["config"]
+    embedder = pipeline["embedder"]
     docs = pipeline["docs"]
 
     chunks = chunk_documents(
@@ -76,18 +66,16 @@ def _build_indexes(strategy: str) -> tuple:
     return chunks, vstore, kstore
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Load and cache the full RAG pipeline on server startup."""
-    load_dotenv()
-
-    pipeline["ready"] = False
-    pipeline["error"] = None
-
+def load_pipeline():
     try:
+        log.info("Loading RAG pipeline...")
+
+        load_dotenv()
+
         config = AppConfig.from_env()
         docs = load_sources(config)
         docs = clean_documents(docs)
+
         embedder = Embedder(model_name=config.embedding_model)
         logger = JsonlLogger(path=config.log_path)
 
@@ -99,34 +87,52 @@ async def lifespan(app: FastAPI):
         pipeline["build_indexes"] = _build_indexes
         pipeline["doc_count"] = len(docs)
         pipeline["ready"] = True
+        pipeline["error"] = None
+
+        log.info("RAG pipeline loaded successfully")
 
     except Exception as exc:
-        pipeline["error"] = str(exc)
         pipeline["ready"] = False
-
-    # Inject pipeline state into the router module so handlers can access it.
-    rag.pipeline = pipeline
-
-    yield
-
-    pipeline.clear()
+        pipeline["error"] = str(exc)
+        log.exception("Startup failed")
 
 
-# ---------------------------------------------------------------------------
-# App
-# ---------------------------------------------------------------------------
 app = FastAPI(
     title="Academic City RAG API",
-    description="Manual RAG pipeline — no LangChain / LlamaIndex.",
+    description="Manual RAG pipeline",
     version="1.0.0",
-    lifespan=lifespan,
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    pipeline["ready"] = False
+    pipeline["error"] = None
+
+    rag.pipeline = pipeline
+
+    threading.Thread(target=load_pipeline, daemon=True).start()
+
+
+@app.get("/")
+def root():
+    return {"status": "running"}
+
+
+@app.get("/health")
+def health():
+    return {
+        "ready": pipeline.get("ready", False),
+        "error": pipeline.get("error"),
+    }
+
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "https://your-frontend.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
